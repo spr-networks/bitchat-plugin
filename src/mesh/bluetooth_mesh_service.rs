@@ -714,6 +714,115 @@ impl BluetoothMeshService {
         
         self.broadcast_packet(packet).await
     }
+    
+    pub async fn send_delivery_ack(&self, message_id: String, recipient_peer_id: String) -> Result<()> {
+        debug!("Sending delivery ack for message {} to {}", message_id, recipient_peer_id);
+        
+        // Convert recipient peer ID to bytes
+        let recipient_id_bytes = hex::decode(&recipient_peer_id)
+            .map_err(|e| Error::Other(format!("Failed to decode peer ID: {}", e)))?;
+        if recipient_id_bytes.len() != 8 {
+            return Err(Error::Other("Invalid recipient peer ID length".to_string()));
+        }
+        let mut recipient_id = [0u8; 8];
+        recipient_id.copy_from_slice(&recipient_id_bytes);
+        
+        // Create payload with proper DeliveryAck structure
+        let mut payload = Vec::new();
+        
+        // Convert UUID string to 16 bytes (removing hyphens)
+        let clean_uuid = message_id.replace("-", "");
+        let uuid_bytes = hex::decode(&clean_uuid)
+            .map_err(|e| Error::Other(format!("Failed to decode message UUID: {}", e)))?;
+        if uuid_bytes.len() != 16 {
+            return Err(Error::Other(format!("Invalid UUID length: {} (expected 16)", uuid_bytes.len())));
+        }
+        payload.extend_from_slice(&uuid_bytes); // originalMessageID (16 bytes)
+        
+        // Generate ackID
+        let ack_id = uuid::Uuid::new_v4();
+        let ack_id_bytes = hex::decode(&ack_id.to_string().replace("-", ""))
+            .map_err(|e| Error::Other(format!("Failed to encode ack UUID: {}", e)))?;
+        payload.extend_from_slice(&ack_id_bytes); // ackID (16 bytes)
+        
+        // Add recipientID (8 bytes) - same as the target we're sending to
+        payload.extend_from_slice(&recipient_id_bytes);
+        
+        // Add hopCount (1 byte)
+        payload.push(3); // Default hop count
+        
+        // Add timestamp (8 bytes, milliseconds since epoch)
+        let timestamp = chrono::Utc::now().timestamp_millis() as u64;
+        payload.extend_from_slice(&timestamp.to_be_bytes());
+        
+        // Add recipientNickname (string with length prefix)
+        // For now, use empty string since we don't track nicknames in acks
+        let nickname = "ack";
+        payload.push(nickname.len() as u8);
+        payload.extend_from_slice(nickname.as_bytes());
+        
+        // Create and send packet
+        let packet = Packet::new(
+            MessageType::DeliveryAck,
+            self.peer_id,
+            payload
+        ).with_recipient(recipient_id);
+        
+        self.broadcast_packet(packet).await
+    }
+    
+    pub async fn send_read_receipt(&self, message_id: String, recipient_peer_id: String) -> Result<()> {
+        debug!("Sending read receipt for message {} to {}", message_id, recipient_peer_id);
+        
+        // Convert recipient peer ID to bytes
+        let recipient_id_bytes = hex::decode(&recipient_peer_id)
+            .map_err(|e| Error::Other(format!("Failed to decode peer ID: {}", e)))?;
+        if recipient_id_bytes.len() != 8 {
+            return Err(Error::Other("Invalid recipient peer ID length".to_string()));
+        }
+        let mut recipient_id = [0u8; 8];
+        recipient_id.copy_from_slice(&recipient_id_bytes);
+        
+        // Create payload with proper ReadReceipt structure
+        let mut payload = Vec::new();
+        
+        // Convert UUID string to 16 bytes (removing hyphens)
+        let clean_uuid = message_id.replace("-", "");
+        let uuid_bytes = hex::decode(&clean_uuid)
+            .map_err(|e| Error::Other(format!("Failed to decode message UUID: {}", e)))?;
+        if uuid_bytes.len() != 16 {
+            return Err(Error::Other(format!("Invalid UUID length: {} (expected 16)", uuid_bytes.len())));
+        }
+        payload.extend_from_slice(&uuid_bytes); // originalMessageID (16 bytes)
+        
+        // Generate receiptID
+        let receipt_id = uuid::Uuid::new_v4();
+        let receipt_id_bytes = hex::decode(&receipt_id.to_string().replace("-", ""))
+            .map_err(|e| Error::Other(format!("Failed to encode receipt UUID: {}", e)))?;
+        payload.extend_from_slice(&receipt_id_bytes); // receiptID (16 bytes)
+        
+        // Add readerID (8 bytes) - our own peer ID
+        payload.extend_from_slice(&self.peer_id);
+        
+        // Add timestamp (8 bytes, milliseconds since epoch)
+        let timestamp = chrono::Utc::now().timestamp_millis() as u64;
+        payload.extend_from_slice(&timestamp.to_be_bytes());
+        
+        // Add readerNickname (string with length prefix)
+        // For now, use empty string since we'll get nickname from delegate
+        let nickname = "reader";
+        payload.push(nickname.len() as u8);
+        payload.extend_from_slice(nickname.as_bytes());
+        
+        // Create and send packet
+        let packet = Packet::new(
+            MessageType::ReadReceipt,
+            self.peer_id,
+            payload
+        ).with_recipient(recipient_id);
+        
+        self.broadcast_packet(packet).await
+    }
 }
 
 impl Clone for BluetoothMeshService {

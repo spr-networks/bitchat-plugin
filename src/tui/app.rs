@@ -4,6 +4,7 @@ use chrono;
 
 #[derive(Debug, Clone)]
 pub struct Message {
+    pub id: String,  // Message ID for tracking acks/receipts
     pub sender: String,
     pub timestamp: String,
     pub content: String,
@@ -203,6 +204,7 @@ impl App {
     pub fn add_sent_message(&mut self, text: String) {
         let timestamp = chrono::Local::now().format("%H:%M").to_string();
         let msg = Message { 
+            id: uuid::Uuid::new_v4().to_string(),
             sender: self.nickname.clone(), 
             timestamp, 
             content: text, 
@@ -225,6 +227,7 @@ impl App {
         // Don't add to DM history yet - wait for successful send
         // Just show attempt in current conversation
         let display_msg = Message {
+            id: uuid::Uuid::new_v4().to_string(),
             sender: format!("→ {}", recipient),
             timestamp,
             content: text,
@@ -247,6 +250,7 @@ impl App {
     pub fn add_system_message(&mut self, text: String) {
         let timestamp = chrono::Local::now().format("%H:%M").to_string();
         let msg = Message {
+            id: uuid::Uuid::new_v4().to_string(),
             sender: "system".to_string(),
             timestamp,
             content: text,
@@ -275,6 +279,7 @@ impl App {
         self.connected = true;
         let mut final_messages = self.popup_messages.drain(..)
             .map(|content| Message { 
+                id: uuid::Uuid::new_v4().to_string(),
                 sender: "system".to_string(), 
                 timestamp: chrono::Local::now().format("%H:%M").to_string(), 
                 content, 
@@ -306,6 +311,7 @@ impl App {
                 TuiPhase::Connected | TuiPhase::Error(_) => {
                     // When connected, add as system message to current conversation
                     let system_msg = Message {
+                        id: uuid::Uuid::new_v4().to_string(),
                         sender: "system".to_string(),
                         timestamp: chrono::Local::now().format("%H:%M").to_string(),
                         content: trimmed,
@@ -439,10 +445,15 @@ impl App {
     }
     
     pub fn add_received_message(&mut self, sender: String, content: String, channel: Option<String>, is_private: bool, recipient_nickname: Option<String>, is_trusted: bool) {
+        self.add_received_message_with_id(uuid::Uuid::new_v4().to_string(), sender, content, channel, is_private, recipient_nickname, is_trusted);
+    }
+    
+    pub fn add_received_message_with_id(&mut self, message_id: String, sender: String, content: String, channel: Option<String>, is_private: bool, recipient_nickname: Option<String>, is_trusted: bool) {
         let timestamp = chrono::Local::now().format("%H:%M").to_string();
         let sender_clone = sender.clone();
         let content_clone = content.clone();
         let msg = Message {
+            id: message_id.clone(),
             sender,
             timestamp,
             content,
@@ -464,6 +475,7 @@ impl App {
                         
                         // Also show in current conversation
                         let display_msg = Message {
+                            id: message_id,
                             sender: format!("← {}", sender_clone),
                             timestamp: chrono::Local::now().format("%H:%M").to_string(),
                             content: content_clone,

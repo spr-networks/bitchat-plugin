@@ -296,16 +296,12 @@ impl PacketProcessor {
                             info!("Received NoiseEncrypted packet from {} - processing for decryption", from_bluetooth_address);
                             self.handle_noise_encrypted(packet, from_bluetooth_address).await?;
                         }
-                        // DeliveryAck and ReadReceipt are handled inside NoiseEncrypted in Android
-                        // We'll comment them out as separate handlers
-                        /*
                         MessageType::DeliveryAck => {
                             self.handle_delivery_ack(packet, from_bluetooth_address).await?;
                         }
                         MessageType::ReadReceipt => {
                             self.handle_read_receipt(packet, from_bluetooth_address).await?;
                         }
-                        */
                         MessageType::ChannelAnnounce => {
                             self.handle_channel_announce(packet, from_bluetooth_address).await?;
                         }
@@ -732,13 +728,24 @@ impl PacketProcessor {
         let sender_id_hex = packet.sender_id_hex();
         debug!("Handling delivery ack from {} (sender: {})", from_bluetooth_address, sender_id_hex);
         
-        // Parse message ID from payload
-        if packet.payload.len() < 16 {
-            debug!("Delivery ack payload too short");
+        // Parse DeliveryAck structure from payload
+        // Format: originalMessageID (16 bytes) + ackID (16 bytes) + recipientID (8 bytes) + hopCount (1) + timestamp (8) + nickname
+        if packet.payload.len() < 49 { // Minimum size without nickname
+            debug!("Delivery ack payload too short: {} bytes", packet.payload.len());
             return Ok(());
         }
         
-        let message_id = String::from_utf8_lossy(&packet.payload[..16]).to_string();
+        // Extract originalMessageID (16 bytes) and convert to UUID string
+        let uuid_bytes = &packet.payload[..16];
+        let message_id = format!(
+            "{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+            uuid_bytes[0], uuid_bytes[1], uuid_bytes[2], uuid_bytes[3],
+            uuid_bytes[4], uuid_bytes[5],
+            uuid_bytes[6], uuid_bytes[7],
+            uuid_bytes[8], uuid_bytes[9],
+            uuid_bytes[10], uuid_bytes[11], uuid_bytes[12], uuid_bytes[13], uuid_bytes[14], uuid_bytes[15]
+        );
+        
         debug!("Delivery acknowledged for message {} by {}", message_id, sender_id_hex);
         
         // Notify delegate about delivery acknowledgment - use actual sender ID
@@ -751,13 +758,24 @@ impl PacketProcessor {
         let sender_id_hex = packet.sender_id_hex();
         debug!("Handling read receipt from {} (sender: {})", from_bluetooth_address, sender_id_hex);
         
-        // Parse message ID from payload
-        if packet.payload.len() < 16 {
-            debug!("Read receipt payload too short");
+        // Parse ReadReceipt structure from payload
+        // Format: originalMessageID (16 bytes) + receiptID (16 bytes) + readerID (8 bytes) + timestamp (8) + nickname
+        if packet.payload.len() < 48 { // Minimum size without nickname
+            debug!("Read receipt payload too short: {} bytes", packet.payload.len());
             return Ok(());
         }
         
-        let message_id = String::from_utf8_lossy(&packet.payload[..16]).to_string();
+        // Extract originalMessageID (16 bytes) and convert to UUID string
+        let uuid_bytes = &packet.payload[..16];
+        let message_id = format!(
+            "{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+            uuid_bytes[0], uuid_bytes[1], uuid_bytes[2], uuid_bytes[3],
+            uuid_bytes[4], uuid_bytes[5],
+            uuid_bytes[6], uuid_bytes[7],
+            uuid_bytes[8], uuid_bytes[9],
+            uuid_bytes[10], uuid_bytes[11], uuid_bytes[12], uuid_bytes[13], uuid_bytes[14], uuid_bytes[15]
+        );
+        
         debug!("Read receipt for message {} from {}", message_id, sender_id_hex);
         
         // Notify delegate about read receipt - use actual sender ID

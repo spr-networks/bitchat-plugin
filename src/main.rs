@@ -1287,31 +1287,92 @@ async fn run_app(
                                                 // Unknown command
                                                 app.add_popup_message(format!("Command not found: {}", input));
                                             } else {
-                                                // Regular message
-                                                let message = BitchatMessage {
-                                                    id: uuid::Uuid::new_v4().to_string(),
-                                                    sender: app.nickname.clone(),
-                                                    content: input.clone(),
-                                                    timestamp: chrono::Utc::now(),
-                                                    channel: Some(app.get_selected_channel_name()),
-                                                    is_private: false,
-                                                    recipient_nickname: None,
-                                                    sender_peer_id: None,
-                                                    mentions: None,
-                                                    encrypted_content: None,
-                                                    is_encrypted: false,
-                                                    is_relay: false,
-                                                    original_sender: None,
-                                                };
-                                                
-                                                app.add_sent_message(input);
-                                                
-                                                let mesh_service = mesh_service.clone();
-                                                tokio::spawn(async move {
-                                                    if let Err(e) = mesh_service.send_message(message).await {
-                                                        error!("Failed to send message: {}", e);
+                                                // Regular message - check if we're in a DM or channel
+                                                if let Some(dm_idx) = app.sidebar_state.people_selected {
+                                                    // We're in a DM conversation
+                                                    if let Some(recipient) = app.people.get(dm_idx) {
+                                                        let recipient_nickname = recipient.clone();
+                                                        
+                                                        // Check if recipient is trusted for encryption indicator
+                                                        let mesh_service_clone = mesh_service.clone();
+                                                        let trust_manager_clone = trust_manager.clone();
+                                                        let is_trusted = tokio::task::block_in_place(|| {
+                                                            tokio::runtime::Handle::current().block_on(async {
+                                                                let peer_manager = mesh_service_clone.get_peer_manager();
+                                                                if let Some(peer) = peer_manager.get_peer_by_nickname(&recipient_nickname).await {
+                                                                    if let Some(static_key) = peer.static_public_key {
+                                                                        let fingerprint = bitchat_rust::crypto::NoiseEncryptionService::calculate_fingerprint(&static_key);
+                                                                        trust_manager_clone.is_trusted(&fingerprint).await
+                                                                    } else {
+                                                                        false
+                                                                    }
+                                                                } else {
+                                                                    false
+                                                                }
+                                                            })
+                                                        });
+                                                        
+                                                        let message = BitchatMessage {
+                                                            id: uuid::Uuid::new_v4().to_string(),
+                                                            sender: app.nickname.clone(),
+                                                            content: input.clone(),
+                                                            timestamp: chrono::Utc::now(),
+                                                            channel: None,
+                                                            is_private: true,
+                                                            recipient_nickname: Some(recipient_nickname.clone()),
+                                                            sender_peer_id: None,
+                                                            mentions: None,
+                                                            encrypted_content: None,
+                                                            is_encrypted: false,
+                                                            is_relay: false,
+                                                            original_sender: None,
+                                                        };
+                                                        
+                                                        // Add to UI with encryption indicator
+                                                        app.add_sent_dm(recipient_nickname.clone(), input, true, is_trusted);
+                                                        
+                                                        let mesh_service = mesh_service.clone();
+                                                        let app_sender_clone = app_sender.clone();
+                                                        tokio::spawn(async move {
+                                                            match mesh_service.send_private_message_by_nickname(message, recipient_nickname.clone()).await {
+                                                                Ok(_) => {
+                                                                    info!("DM sent successfully to {}", recipient_nickname);
+                                                                }
+                                                                Err(e) => {
+                                                                    error!("Failed to send DM to {}: {}", recipient_nickname, e);
+                                                                    let error_msg = format!("Failed to send DM: {}", e);
+                                                                    let _ = app_sender_clone.send(AppEvent::Log(error_msg, log::Level::Error));
+                                                                }
+                                                            }
+                                                        });
                                                     }
-                                                });
+                                                } else {
+                                                    // We're in a channel
+                                                    let message = BitchatMessage {
+                                                        id: uuid::Uuid::new_v4().to_string(),
+                                                        sender: app.nickname.clone(),
+                                                        content: input.clone(),
+                                                        timestamp: chrono::Utc::now(),
+                                                        channel: Some(app.get_selected_channel_name()),
+                                                        is_private: false,
+                                                        recipient_nickname: None,
+                                                        sender_peer_id: None,
+                                                        mentions: None,
+                                                        encrypted_content: None,
+                                                        is_encrypted: false,
+                                                        is_relay: false,
+                                                        original_sender: None,
+                                                    };
+                                                    
+                                                    app.add_sent_message(input);
+                                                    
+                                                    let mesh_service = mesh_service.clone();
+                                                    tokio::spawn(async move {
+                                                        if let Err(e) = mesh_service.send_message(message).await {
+                                                            error!("Failed to send message: {}", e);
+                                                        }
+                                                    });
+                                                }
                                             }
                                         }
                                     }
@@ -1338,7 +1399,98 @@ async fn run_app(
                                     }
                                     KeyCode::Enter => {
                                         // Handle sidebar selection
-                                        // TODO: Implement sidebar selection logic
+                                        let mut section = 0;
+                                        let mut idx_in_section = 0;
+                                        let mut current_flat = 0;
+                                        
+                                        // Public Channel
+                                        if current_flat == app.sidebar_flat_selected {
+                                            app.sidebar_state.toggle_expand(0);
+                                        }
+                                        current_flat += 1;
+                                        
+                                        if app.sidebar_state.expanded[0] {
+                                            if current_flat == app.sidebar_flat_selected {
+                                                app.sidebar_state.public_selected = Some(true);
+                                                app.sidebar_state.channel_selected = None;
+                                                app.sidebar_state.people_selected = None;
+                                                app.update_current_conversation();
+                                                app.mark_current_conversation_as_read();
+                                            }
+                                            current_flat += 1;
+                                        }
+                                        
+                                        // Channels
+                                        if current_flat == app.sidebar_flat_selected {
+                                            app.sidebar_state.toggle_expand(1);
+                                        }
+                                        current_flat += 1;
+                                        
+                                        if app.sidebar_state.expanded[1] {
+                                            let num_channels = app.channels.len();
+                                            for i in 0..num_channels {
+                                                if current_flat == app.sidebar_flat_selected {
+                                                    app.sidebar_state.public_selected = None;
+                                                    app.sidebar_state.channel_selected = Some(i);
+                                                    app.sidebar_state.people_selected = None;
+                                                    app.update_current_conversation();
+                                                    app.mark_current_conversation_as_read();
+                                                }
+                                                current_flat += 1;
+                                            }
+                                        }
+                                        
+                                        // Direct Messages
+                                        if current_flat == app.sidebar_flat_selected {
+                                            app.sidebar_state.toggle_expand(2);
+                                        }
+                                        current_flat += 1;
+                                        
+                                        if app.sidebar_state.expanded[2] {
+                                            let people = app.people.clone();
+                                            for (i, person) in people.iter().enumerate() {
+                                                if current_flat == app.sidebar_flat_selected {
+                                                    app.sidebar_state.public_selected = None;
+                                                    app.sidebar_state.channel_selected = None;
+                                                    app.sidebar_state.people_selected = Some(i);
+                                                    app.update_current_conversation();
+                                                    app.mark_current_conversation_as_read();
+                                                    
+                                                    // Send read receipts for all unread messages from this person
+                                                    let person_nickname = person.clone();
+                                                    let mesh_service_clone = mesh_service.clone();
+                                                    let dm_messages = app.dm_messages.get(&person_nickname).cloned().unwrap_or_default();
+                                                    
+                                                    tokio::spawn(async move {
+                                                        // Get peer ID for this person
+                                                        let peer_manager = mesh_service_clone.get_peer_manager();
+                                                        if let Some(peer) = peer_manager.get_peer_by_nickname(&person_nickname).await {
+                                                            // Send read receipt for each message
+                                                            for msg in dm_messages.iter() {
+                                                                // Only send read receipts for received messages (not our own)
+                                                                if msg.sender == person_nickname {
+                                                                    if let Err(e) = mesh_service_clone.send_read_receipt(msg.id.clone(), peer.id.clone()).await {
+                                                                        debug!("Failed to send read receipt: {}", e);
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    });
+                                                }
+                                                current_flat += 1;
+                                            }
+                                        }
+                                        
+                                        // Blocked
+                                        if current_flat == app.sidebar_flat_selected {
+                                            app.sidebar_state.toggle_expand(3);
+                                        }
+                                        current_flat += 1;
+                                        
+                                        // Settings
+                                        if current_flat == app.sidebar_flat_selected {
+                                            app.sidebar_state.toggle_expand(4);
+                                        }
                                     }
                                     _ => {}
                                 }
@@ -1523,14 +1675,51 @@ async fn run_app(
                                 false  // No checkmark for public messages or unencrypted messages
                             };
                             
-                            app.add_received_message(
-                                message.sender,
+                            // Send delivery ack for private messages
+                            if message.is_private {
+                                if let Some(ref sender_peer_id) = message.sender_peer_id {
+                                    let message_id = message.id.clone();
+                                    let sender_id = sender_peer_id.clone();
+                                    let mesh_service_clone = mesh_service.clone();
+                                    tokio::spawn(async move {
+                                        if let Err(e) = mesh_service_clone.send_delivery_ack(message_id, sender_id).await {
+                                            debug!("Failed to send delivery ack: {}", e);
+                                        }
+                                    });
+                                }
+                            }
+                            
+                            app.add_received_message_with_id(
+                                message.id.clone(),
+                                message.sender.clone(),
                                 message.content,
                                 message.channel,
                                 message.is_private,
                                 message.recipient_nickname,
                                 is_trusted,
                             );
+                            
+                            // Check if we should send read receipt (if this message is in the current conversation)
+                            if message.is_private {
+                                if let Some(ref sender_peer_id) = message.sender_peer_id {
+                                    // Check if we're currently viewing this conversation
+                                    if let Some(selected_idx) = app.sidebar_state.people_selected {
+                                        if let Some(selected_person) = app.people.get(selected_idx) {
+                                            if selected_person == &message.sender {
+                                                // We're viewing this conversation, send read receipt
+                                                let message_id = message.id.clone();
+                                                let sender_id = sender_peer_id.clone();
+                                                let mesh_service_clone = mesh_service.clone();
+                                                tokio::spawn(async move {
+                                                    if let Err(e) = mesh_service_clone.send_read_receipt(message_id, sender_id).await {
+                                                        debug!("Failed to send read receipt: {}", e);
+                                                    }
+                                                });
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                     AppEvent::PeerConnected(peer_id) => {
@@ -1605,6 +1794,7 @@ async fn run_app(
                         // Command output is ALWAYS shown regardless of debug mode
                         let timestamp = chrono::Local::now().format("%H:%M").to_string();
                         let output_msg = bitchat_rust::tui::app::Message {
+                            id: uuid::Uuid::new_v4().to_string(),
                             sender: "system".to_string(),
                             timestamp,
                             content: msg,
@@ -1635,6 +1825,7 @@ async fn run_app(
                             // Add log messages to the current conversation as system messages
                             let timestamp = chrono::Local::now().format("%H:%M").to_string();
                             let log_msg = bitchat_rust::tui::app::Message {
+                                id: uuid::Uuid::new_v4().to_string(),
                                 sender: "system".to_string(),
                                 timestamp,
                                 content: msg,
