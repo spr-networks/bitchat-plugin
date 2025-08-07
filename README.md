@@ -38,6 +38,8 @@ Users can dm "wifi?" to get a unique password.
 
 <img width="1124" height="748" alt="image" src="https://github.com/user-attachments/assets/680cef5e-82f3-47da-895d-75d80a6fc8be" />
 
+To use the client on spr, attach to the plugin:
+`docker exec -it bitchat /bin/tmux attach`
 
 ## TBD 
 
