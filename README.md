@@ -51,4 +51,5 @@ To use the client on spr, attach to the plugin:
 
 - Add support for https://github.com/seemoo-lab/openwifipass 
 - Add wireguard provisioning support
-- Relay BT over UDP/wg 
+- Relay BT over UDP/wg
+- Nostr support
