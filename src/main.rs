@@ -551,12 +551,26 @@ async fn run_app(
                                                         };
                                                         
                                                         // Check if recipient is trusted for showing checkmark
+                                                        // Look up peer by nickname and check their fingerprint
                                                         let trust_manager = trust_manager.clone();
+                                                        let mesh_service_for_trust = mesh_service.clone();
                                                         let recipient_for_check = recipient.clone();
                                                         let message_content_for_display = message_content.clone();
                                                         let is_trusted = tokio::task::block_in_place(|| {
                                                             tokio::runtime::Handle::current().block_on(async {
-                                                                trust_manager.is_trusted_by_nickname(&recipient_for_check).await
+                                                                // Get peer by nickname
+                                                                let peer_manager = mesh_service_for_trust.get_peer_manager();
+                                                                if let Some(peer) = peer_manager.get_peer_by_nickname(&recipient_for_check).await {
+                                                                    if let Some(static_key) = peer.static_public_key {
+                                                                        // Calculate fingerprint and check if trusted
+                                                                        let fingerprint = bitchat_rust::crypto::NoiseEncryptionService::calculate_fingerprint(&static_key);
+                                                                        trust_manager.is_trusted(&fingerprint).await
+                                                                    } else {
+                                                                        false  // No static key available
+                                                                    }
+                                                                } else {
+                                                                    false  // Peer not found
+                                                                }
                                                             })
                                                         });
                                                         
@@ -1483,11 +1497,28 @@ async fn run_app(
                             // Normal message handling
                             // Only show trust checkmark for private/encrypted messages, not public broadcasts
                             let is_trusted = if message.is_private && message.is_encrypted {
-                                tokio::task::block_in_place(|| {
-                                    tokio::runtime::Handle::current().block_on(async {
-                                        trust_manager.is_trusted_by_nickname(&message.sender).await
+                                // Check trust based on peer's actual public key fingerprint, not nickname
+                                if let Some(ref peer_id) = message.sender_peer_id {
+                                    let peer_manager = mesh_service.get_peer_manager();
+                                    tokio::task::block_in_place(|| {
+                                        tokio::runtime::Handle::current().block_on(async {
+                                            // Get peer's static key
+                                            if let Some(peer) = peer_manager.get_peer(peer_id).await {
+                                                if let Some(static_key) = peer.static_public_key {
+                                                    // Calculate fingerprint and check if trusted
+                                                    let fingerprint = bitchat_rust::crypto::NoiseEncryptionService::calculate_fingerprint(&static_key);
+                                                    trust_manager.is_trusted(&fingerprint).await
+                                                } else {
+                                                    false  // No static key available
+                                                }
+                                            } else {
+                                                false  // Peer not found
+                                            }
+                                        })
                                     })
-                                })
+                                } else {
+                                    false  // No peer ID in message
+                                }
                             } else {
                                 false  // No checkmark for public messages or unencrypted messages
                             };
