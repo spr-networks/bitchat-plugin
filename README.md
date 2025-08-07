@@ -1,7 +1,7 @@
 # bitchat-rust-vibes-plugin
 
-This repository creates a plugin for SPR to use [bitchat](https://github.com/permissionlesstech/bitchat), using a rust-based
-bitchat client using the `bluer` library. Vibes also came from [bitchat_tui](https://github.com/vaibhav-mattoo/bitchat-tui)
+This repository is a linux rust [bitchat](https://github.com/permissionlesstech/bitchat)
+bitchat client using the `bluer` library and `snow` for noise. Vibes also came from [bitchat_tui](https://github.com/vaibhav-mattoo/bitchat-tui)
 
 
 > [!WARNING]
