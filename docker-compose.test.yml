@@ -1,0 +1,19 @@
+version: '3'
+services:
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: bitchat-test
+    command: |
+      sh -c "
+        echo 'Compiling tests...' &&
+        cargo test --no-run &&
+        echo '\nRunning Protocol tests...' &&
+        cargo test protocol:: --lib --tests -- --nocapture --test-threads=1 &&
+        echo '\nRunning Noise tests...' &&
+        cargo test noise:: --lib --tests -- --nocapture --test-threads=1
+      "
+    environment:
+      - RUST_LOG=debug
+      - RUST_BACKTRACE=1

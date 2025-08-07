@@ -1,0 +1,63 @@
+[package]
+name = "bitchat-rust"
+version = "0.1.0"
+edition = "2021"
+description = "A bitchat rust client vibed from https://github.com/jackjackbits/bitchat and https://github.com/vaibhav-mattoo/bitchat-tui"
+license = "Unlicense"
+documentation = "https://github.com/spr-networks/bitchat-plugin/"
+homepage = "https://github.com/spr-networks/bitchat-plugin/"
+repository = "https://github.com/spr-networks/bitchat-plugin"
+
+[[bin]]
+name = "bitchat-rust"
+path = "src/main.rs"
+
+[dependencies]
+# Dependencies for all platforms
+ratatui = { version = "0.26.2", features = ["all-widgets"] }
+crossterm = "0.27.0"
+tui-input = "0.8.0"
+futures-util = "0.3.30"
+regex = "1"
+strip-ansi-escapes = "0.2"
+tokio = { version = "1", features = ["full", "process", "io-util"] }
+bluer = { version = "0.17", features = ["full"] }
+tokio-util = { version = "0.7", features = ["io"] }
+rand = "0.8"
+uuid = { version = "1", features = ["v4"] }
+hex = "0.4"
+sha2 = "0.10"
+pbkdf2 = "0.12"
+futures = "0.3" 
+bloomfilter = "1.0" 
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+dirs = "5.0"
+getrandom = "0.2"
+thiserror = "1.0"
+
+# For Cryptography
+x25519-dalek = { version = "2.0", features = ["static_secrets", "getrandom"] }
+ed25519-dalek = { version = "2.0", features = ["rand_core"] }
+aes-gcm = { version = "0.10", features = ["aes"] }
+curve25519-dalek = "4.1.1"
+hmac = "0.12"
+# Noise protocol - using snow library
+snow = { version = "0.9", default-features = false, features = ["default-resolver"] }
+
+# Additional dependencies
+anyhow = "1.0"
+async-trait = "0.1"
+byteorder = "1.5"
+log = "0.4"
+env_logger = "0.11"
+flate2 = "1.0"
+reqwest = { version = "0.11", features = ["json"] }
+
+# Platform-specific dependencies for Linux builds
+[target.'cfg(target_os = "linux")'.dependencies]
+dbus = { version = "0.9", features = ["vendored"] }
+
+[dev-dependencies]
+tokio-test = "0.4" 

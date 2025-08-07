@@ -1,0 +1,11 @@
+{
+  "Name": "bitchat-plugin",
+  "ComposeFilePath": "plugins/user/bitchat-plugin/docker-compose-spr.yml",
+  "UnixPath": "/state/plugins/bitchat-plugin/socket",
+  "URI": "bitchat-plugin",
+  "HasUI": false,
+  "SandboxedUI": false,
+  "InstallTokenPath": "/configs/plugins/bitchat/api-token",
+  "ScopedPaths": ["/devices:r", "/device", "/hostapd/wlan1/config"],
+  "Enabled": true
+}

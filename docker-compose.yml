@@ -1,0 +1,29 @@
+services:
+  bitchat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bitchat
+    
+    # Required for Bluetooth access
+    privileged: true
+    network_mode: host
+    
+    # Mount D-Bus for Bluetooth communication
+    volumes:
+      - /var/run/dbus:/var/run/dbus:ro
+      - /sys/class/bluetooth:/sys/class/bluetooth:ro
+      - ./bitchat-data:/root/.bitchat  # Persist BitChat data (nickname, keys, etc.)
+    
+    # Environment variables
+    environment:
+      - RUST_LOG=info
+    
+    # Interactive terminal
+    stdin_open: true
+    tty: true
+    
+    
+volumes:
+  bitchat-data:
+    driver: local
