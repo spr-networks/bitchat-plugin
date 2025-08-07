@@ -7,6 +7,8 @@ bitchat client using the `bluer` library. Vibes also came from [bitchat_tui](htt
 > [!WARNING]
 > This project has not been audited for security and was generated entirely by chatting with claude code.
 
+<img width="2252" height="637" alt="image" src="https://github.com/user-attachments/assets/726e0f94-dfac-4b3f-ab9f-b8de323a5972" />
+
 ## Thank you
 
 Shout out to Jack Dorsey, Vaibhav Mattoo & Anthropic for making this possible
@@ -31,6 +33,11 @@ To build & run, `docker compose build && docker compose run bitchat`
 - An operator can also attach to the container and interact in the UI 
 - Can be provisioned with an API key for https://github.com/spr-networks/super to hand out unique wifi passwords to bitchat clients
 - The plugin can be installed in SPR from the URL https://github.com/spr-networks/bitchat-plugin
+
+Users can dm "wifi?" to get a unique password.
+
+<img width="1124" height="748" alt="image" src="https://github.com/user-attachments/assets/680cef5e-82f3-47da-895d-75d80a6fc8be" />
+
 
 ## TBD 
 
