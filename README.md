@@ -1,7 +1,7 @@
 # bitchat-rust-vibes-plugin
 
 This repository is a linux rust [bitchat](https://github.com/permissionlesstech/bitchat)
-bitchat client using the `bluer` library and `snow` for noise. Vibes also came from [bitchat_tui](https://github.com/vaibhav-mattoo/bitchat-tui)
+client using the `bluer` library and `snow` for noise. Vibes also came from [bitchat_tui](https://github.com/vaibhav-mattoo/bitchat-tui)
 
 
 > [!WARNING]
@@ -34,13 +34,22 @@ To build & run, `docker compose build && docker compose run bitchat`
 - Can be provisioned with an API key for https://github.com/spr-networks/super to hand out unique wifi passwords to bitchat clients
 - The plugin can be installed in SPR from the URL https://github.com/spr-networks/bitchat-plugin
 
-Users can dm "wifi?" to get a unique password.
+Users can dm "wifi?" to get a unique password. The algorithm is as follows:
+
+- secret is generated securely with 32 random bytes (/dev/urandom) and persisted
+- when a user DMs the plugin, it computes a new password as follows:
+HMAC_SHA256(secret, peer key fingerprint) | 16 bytes -> hex 32 bytes 
+- the password is transmitted over the noise e2e channel with this peer 
+- this is provisioned as a wifi password for a new device to connect
 
 <img width="1124" height="748" alt="image" src="https://github.com/user-attachments/assets/680cef5e-82f3-47da-895d-75d80a6fc8be" />
 
+To use the client on spr, attach to the plugin:
+`docker exec -it bitchat /bin/tmux attach`
 
 ## TBD 
 
 - Add support for https://github.com/seemoo-lab/openwifipass 
 - Add wireguard provisioning support
-- Relay BT over UDP/wg 
+- Relay BT over UDP/wg
+- Nostr support
