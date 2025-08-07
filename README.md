@@ -26,6 +26,14 @@ To build & run, `docker compose build && docker compose run bitchat`
 
 ## WiFi / SPR Router Features
 
-- Can be provisioned with an API key to hand out unique wifi passwords to bitchat clients
+- Plugin can be run on linux systems but is also tailored to work for SPR with docker-compose-spr.yml and plugin.json
+- This plugin enables SPR to join the Bitchat mesh and relay messages
+- An operator can also attach to the container and interact in the UI 
+- Can be provisioned with an API key for https://github.com/spr-networks/super to hand out unique wifi passwords to bitchat clients
+- The plugin can be installed in SPR from the URL https://github.com/spr-networks/bitchat-plugin
 
+## TBD 
 
+- Add support for https://github.com/seemoo-lab/openwifipass 
+- Add wireguard provisioning support
+- Relay BT over UDP/wg 
