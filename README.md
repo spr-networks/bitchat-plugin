@@ -7,6 +7,8 @@ bitchat client using the `bluer` library. Vibes also came from [bitchat_tui](htt
 > [!WARNING]
 > This project has not been audited for security and was generated entirely by chatting with claude code.
 
+<img width="2252" height="637" alt="image" src="https://github.com/user-attachments/assets/726e0f94-dfac-4b3f-ab9f-b8de323a5972" />
+
 ## Thank you
 
 Shout out to Jack Dorsey, Vaibhav Mattoo & Anthropic for making this possible
