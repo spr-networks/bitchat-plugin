@@ -6,6 +6,6 @@
   "HasUI": false,
   "SandboxedUI": false,
   "InstallTokenPath": "/configs/plugins/bitchat/api-token",
-  "ScopedPaths": ["/devices:r", "/device", "/hostapd/wlan1/config"],
+  "ScopedPaths": ["/devices:r", "/device", "/hostapd/wlan1/config:r"],
   "Enabled": true
 }
