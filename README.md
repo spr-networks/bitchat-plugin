@@ -1,7 +1,7 @@
 # bitchat-rust-vibes-plugin
 
 This repository is a linux rust [bitchat](https://github.com/permissionlesstech/bitchat)
-bitchat client using the `bluer` library and `snow` for noise. Vibes also came from [bitchat_tui](https://github.com/vaibhav-mattoo/bitchat-tui)
+client using the `bluer` library and `snow` for noise. Vibes also came from [bitchat_tui](https://github.com/vaibhav-mattoo/bitchat-tui)
 
 
 > [!WARNING]
