@@ -34,6 +34,11 @@ To build & run, `docker compose build && docker compose run bitchat`
 - Can be provisioned with an API key for https://github.com/spr-networks/super to hand out unique wifi passwords to bitchat clients
 - The plugin can be installed in SPR from the URL https://github.com/spr-networks/bitchat-plugin
 
+Users can dm "wifi?" to get a unique password.
+
+<img width="1124" height="748" alt="image" src="https://github.com/user-attachments/assets/680cef5e-82f3-47da-895d-75d80a6fc8be" />
+
+
 ## TBD 
 
 - Add support for https://github.com/seemoo-lab/openwifipass 
